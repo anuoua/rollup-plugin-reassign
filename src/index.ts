@@ -84,7 +84,13 @@ export function reassign(options: ReassignOptions): Plugin {
           }
 
           // package name not match or no fn match
-          if (!sourceMatch || importFns.length === 0) return;
+          if (!sourceMatch || importFns.length === 0) {
+            return {
+              code,
+              ast,
+              map: sourcemap ? magicString.generateMap({ hires: true }) : null,
+            };
+          }
 
           if ("AssignmentExpression" === node.type) {
             const { left } = node as AssignmentExpression;
@@ -190,14 +196,6 @@ export function reassign(options: ReassignOptions): Plugin {
           if (node.scope) scope = scope?.parent;
         },
       });
-
-      if (!sourceMatch || importFns.length === 0) {
-        return {
-          code,
-          ast,
-          map: sourcemap ? magicString.generateMap({ hires: true }) : null,
-        };
-      }
 
       return {
         code: magicString.toString(),
