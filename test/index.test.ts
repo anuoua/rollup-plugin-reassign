@@ -1,5 +1,5 @@
 import { InputOptions, OutputOptions, rollup } from "rollup";
-import reassign from "../src/index";
+import { reassign } from "../src/index";
 
 const code = `import at, { bt } from 'test';
 

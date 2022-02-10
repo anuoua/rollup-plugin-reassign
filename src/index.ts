@@ -1,8 +1,8 @@
 import { AttachedScope, attachScopes, createFilter } from "@rollup/pluginutils";
-import { Plugin } from "rollup";
+import type { Plugin } from "rollup";
 import { walk } from "estree-walker";
 import MagicString from "magic-string";
-import {
+import type {
   ImportDeclaration,
   ImportSpecifier,
   AssignmentExpression,
@@ -31,7 +31,7 @@ export interface ReassignOptions {
 
 const SUFFIX = "$NO";
 
-export default function reassign(options: ReassignOptions): Plugin {
+export function reassign(options: ReassignOptions): Plugin {
   const { packageName, fns, sourcemap = true } = options;
 
   const filter = createFilter(options.include, options.exclude);
