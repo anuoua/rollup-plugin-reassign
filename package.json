@@ -7,7 +7,7 @@
   "types": "./dist/index.d.ts",
   "typings": "./dist/index.d.ts",
   "scripts": {
-    "test": "jest --watch",
+    "test": "jest",
     "dist": "rollup --config"
   },
   "exports": {
