@@ -8,7 +8,7 @@ export function main() {
     },
     ...e
   } = at("hello");
-  let [{ f: g }] = bt("hello2");
+  let [{ f: g }] = bt("hello");
   let a = bt("hello");
 
   return {

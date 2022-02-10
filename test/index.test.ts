@@ -1,8 +1,33 @@
 import { InputOptions, OutputOptions, rollup } from "rollup";
 import reassign from "../src/index";
 
+const code = `import at, { bt } from 'test';
+
+function main() {
+  let {
+    a: {
+      b: { c },
+      ...d
+    },
+    ...e
+  } = at("hello",({a:{b:{c:$0},...$1},...$2})=>{c=$0;d=$1;e=$2;});
+  let [{ f: g }] = bt("hello",([{f:$0}])=>{g=$0;});
+  let a = bt("hello",$=>a=$);
+
+  return {
+    a,
+    c,
+    d,
+    e,
+    g,
+  };
+}
+
+export { main };
+`;
+
 describe("test", () => {
-  it("1", async () => {
+  it("transform", async () => {
     const inputOptions: InputOptions = {
       input: "./test/reassign.js",
       plugins: [
@@ -25,9 +50,7 @@ describe("test", () => {
 
     for (let chunk of output) {
       // @ts-ignore
-      console.log(chunk);
+      expect(chunk.code).toBe(code);
     }
-
-    expect("1").toBe("1");
   });
 });
