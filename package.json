@@ -1,0 +1,38 @@
+{
+  "name": "rollup-plugin-reassign",
+  "version": "0.0.0",
+  "description": "rollup plugin for re-assign variable",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anuoua/rollup-plugin-reassign.git"
+  },
+  "keywords": [
+    "rollup",
+    "plugin",
+    "reassign"
+  ],
+  "author": "anuoua",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/anuoua/rollup-plugin-reassign/issues"
+  },
+  "homepage": "https://github.com/anuoua/rollup-plugin-reassign#readme",
+  "devDependencies": {
+    "@rollup/pluginutils": "^4.1.2",
+    "@types/estree": "^0.0.50",
+    "@types/jest": "^27.4.0",
+    "acorn-walk": "^8.2.0",
+    "jest": "^27.4.7",
+    "magic-string": "^0.25.7",
+    "rollup": "^2.66.1",
+    "ts-jest": "^27.1.3",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {
+    "estree-walker": "^3.0.1"
+  }
+}
