@@ -1,4 +1,9 @@
-import { AttachedScope, attachScopes, createFilter } from "@rollup/pluginutils";
+import {
+  AttachedScope,
+  attachScopes,
+  createFilter,
+  FilterPattern,
+} from "@rollup/pluginutils";
 import type { Plugin } from "rollup";
 import { walk } from "estree-walker";
 import MagicString from "magic-string";
@@ -22,8 +27,8 @@ declare module "estree" {
 }
 
 export interface ReassignOptions {
-  include?: string;
-  exclude?: string;
+  include?: FilterPattern;
+  exclude?: FilterPattern;
   sourcemap?: boolean;
   packageName: string | RegExp;
   fns: string[];
