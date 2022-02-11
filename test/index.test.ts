@@ -33,7 +33,7 @@ describe("test", () => {
       plugins: [
         reassign({
           packageName: "test",
-          fns: ["at", "bt"],
+          fns: ["default", "bt"],
           sourcemap: true,
         }),
       ],

@@ -15,6 +15,7 @@ import type {
   ObjectPattern,
   Identifier,
   ArrayPattern,
+  Program,
 } from "estree";
 
 declare module "estree" {
@@ -62,39 +63,48 @@ export function reassign(options: ReassignOptions): Plugin {
 
           if (node.scope) scope = node.scope;
 
-          if ("ImportDeclaration" === node.type) {
-            const { specifiers, source } = node as ImportDeclaration;
+          const skip = () => {
+            if (node.scope) scope = scope?.parent;
+            this.skip();
+          };
 
-            if (packageName === source.value) {
-              sourceMatch = true;
+          if ("Program" === node.type) {
+            const { body } = node as Program;
+            const imports = body.filter(
+              (i) => i.type === "ImportDeclaration"
+            ) as ImportDeclaration[];
 
-              specifiers.forEach((specifier) => {
-                const { type } = specifier;
+            if (imports.length === 0) return skip();
 
-                if ("ImportSpecifier" === type) {
-                  const { imported, local } = specifier as ImportSpecifier;
-                  fns.find((fn) => fn === imported.name) &&
+            imports.forEach((node) => {
+              const { specifiers, source } = node;
+
+              if (packageName === source.value) {
+                sourceMatch = true;
+
+                specifiers.forEach((specifier) => {
+                  const { type } = specifier;
+
+                  if ("ImportSpecifier" === type) {
+                    const { imported, local } = specifier as ImportSpecifier;
+                    fns.includes(imported.name) && importFns.push(local.name);
+                  }
+
+                  if ("ImportDefaultSpecifier" === type) {
+                    const { local } = specifier;
+                    fns.includes("default") && importFns.push(local.name);
+                  }
+
+                  if ("ImportNamespaceSpecifier" === type) {
+                    const { local } = specifier;
                     importFns.push(local.name);
-                }
-
-                if (
-                  "ImportDefaultSpecifier" === type ||
-                  "ImportNamespaceSpecifier" === type
-                ) {
-                  const { local } = specifier;
-                  importFns.push(local.name);
-                }
-              });
+                  }
+                });
+              }
+            });
+            if (!sourceMatch || importFns.length === 0) {
+              return skip();
             }
-          }
-
-          // package name not match or no fn match
-          if (!sourceMatch || importFns.length === 0) {
-            return {
-              code,
-              ast,
-              map: sourcemap ? magicString.generateMap({ hires: true }) : null,
-            };
           }
 
           if ("AssignmentExpression" === node.type) {
@@ -201,6 +211,14 @@ export function reassign(options: ReassignOptions): Plugin {
           if (node.scope) scope = scope?.parent;
         },
       });
+
+      if (!sourceMatch || importFns.length === 0) {
+        return {
+          code,
+          ast,
+          map: sourcemap ? magicString.generateMap({ hires: true }) : null,
+        };
+      }
 
       return {
         code: magicString.toString(),
