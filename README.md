@@ -11,7 +11,7 @@ npm i rollup-plugin-reassign -D
 ## Config
 
 ```typescript
-import { reassign } from 'rollup-plugin-reassign'
+import { reassign } from "rollup-plugin-reassign"
 
 // See: https://github.com/rollup/plugins/blob/master/packages/pluginutils/README.md#createfilter
 type FilterPattern = String | RegExp | Array[...String|RegExp]
