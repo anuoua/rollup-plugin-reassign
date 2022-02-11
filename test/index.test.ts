@@ -32,9 +32,10 @@ describe("test", () => {
       input: "./test/reassign.js",
       plugins: [
         reassign({
-          packageName: "test",
-          fns: ["default", "bt"],
           sourcemap: true,
+          targetFns: {
+            test: ["default", "bt"],
+          },
         }),
       ],
       external: ["test"],

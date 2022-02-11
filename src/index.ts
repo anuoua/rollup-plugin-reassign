@@ -31,19 +31,17 @@ export interface ReassignOptions {
   include?: FilterPattern;
   exclude?: FilterPattern;
   sourcemap?: boolean;
-  packageName: FilterPattern;
-  fns: string[];
+  targetFns: {
+    [index: string]: string[];
+  };
 }
 
 const SUFFIX = "$NO";
 
 export function reassign(options: ReassignOptions): Plugin {
-  const { packageName, fns, include, exclude, sourcemap = true } = options;
+  const { targetFns: targets, include, exclude, sourcemap = true } = options;
 
   const idFilter = createFilter(include, exclude);
-  const packageNameFilter = createFilter(packageName, undefined, {
-    resolve: false,
-  });
 
   return {
     name: "reassign",
@@ -82,7 +80,8 @@ export function reassign(options: ReassignOptions): Plugin {
             imports.forEach((node) => {
               const { specifiers, source } = node;
 
-              if (packageNameFilter(source.value)) {
+              if (targets[source.value + ""]) {
+                const targetFns = targets[source.value + ""];
                 sourceMatch = true;
 
                 specifiers.forEach((specifier) => {
@@ -90,12 +89,13 @@ export function reassign(options: ReassignOptions): Plugin {
 
                   if ("ImportSpecifier" === type) {
                     const { imported, local } = specifier as ImportSpecifier;
-                    fns.includes(imported.name) && importFns.push(local.name);
+                    targetFns.includes(imported.name) &&
+                      importFns.push(local.name);
                   }
 
                   if ("ImportDefaultSpecifier" === type) {
                     const { local } = specifier;
-                    fns.includes("default") && importFns.push(local.name);
+                    targetFns.includes("default") && importFns.push(local.name);
                   }
 
                   if ("ImportNamespaceSpecifier" === type) {
