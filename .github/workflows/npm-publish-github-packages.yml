@@ -37,6 +37,7 @@ jobs:
         with:
           version: 6.30.1
       - run: pnpm install
+      - run: pnpm dist
       - run: pnpm publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
