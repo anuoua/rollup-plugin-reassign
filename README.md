@@ -1,11 +1,11 @@
-# Reassign plugin
+# Rollup reassign plugin
 
-A plugin for self renewal variable.
+A rollup plugin for self reassign variable.
 
 ## Install
 
 ```shell
-npm i rollup-plugin-reassign
+npm i rollup-plugin-reassign -D
 ```
 
 ## Config
@@ -13,51 +13,56 @@ npm i rollup-plugin-reassign
 ```typescript
 import { reassign } from 'rollup-plugin-reassign'
 
+// See: https://github.com/rollup/plugins/blob/master/packages/pluginutils/README.md#createfilter
+type FilterPattern = String | RegExp | Array[...String|RegExp]
+
 interface ReassignOptions {
-  include?: string;
-  exclude?: string;
-  sourcemap?: boolean;
-  packageName: string;
-  fns: string[];
+  include?: FilterPattern; // Include files
+  exclude?: FilterPattern; // Eclude files
+  sourcemap?: boolean; // Sourcemap default: true
+  packageName: FilterPattern; // Effective package name
+  fns: string[]; // Effective function names
 }
 
 export default {
-    ...
-    plugins: [reassign({...} as ReassignOptions)]
+    plugins: [reassign(opt as ReassignOptions)]
 }
 ```
 
 ## Example
 
-rollup.config
+rollup.config.js
 
 ```typescript
-import { reassign } from 'rollup-plugin-reassign'
+import { reassign } from "rollup-plugin-reassign";
 
 export default {
-    ...
-    plugins: [reassign({ packageName: 'test', fns: ['fn1', 'fn2'] })]
-}
+  plugins: [reassign({ packageName: "test", fns: ["default", "fn1", "fn2"] })],
+};
+
+// fns `default` is `export default` fun, see `fn0` below
 ```
 
 code
 
 ```typescript
-import { fn1, fn2 } from "test";
+import fn0, { fn1, fn2 } from "test";
 
-const a = fn1("a");
-const { b } = fn2("a");
+let [k, setK] = fn0("a");
+let { b } = fn1("a");
+let a = fn2("a");
 ```
 
 compile to
 
 ```typescript
-import { fn1, fn2 } from "test";
+import fn0, { fn1, fn2 } from "test";
 
-const a = fn1("a", ($) => (a = $));
-const { b } = fn2("a", ({ b: $0 }) => {
+let [k, setK] = fn0("a", ([$0, $1]) => (k = $0; setK = $1));
+let { b } = fn1("a", ({ b: $0 }) => {
   b = $0;
 });
+let a = fn2("a", ($) => (a = $));
 ```
 
 ## License

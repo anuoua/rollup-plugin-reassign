@@ -31,21 +31,24 @@ export interface ReassignOptions {
   include?: FilterPattern;
   exclude?: FilterPattern;
   sourcemap?: boolean;
-  packageName: string | RegExp;
+  packageName: FilterPattern;
   fns: string[];
 }
 
 const SUFFIX = "$NO";
 
 export function reassign(options: ReassignOptions): Plugin {
-  const { packageName, fns, sourcemap = true } = options;
+  const { packageName, fns, include, exclude, sourcemap = true } = options;
 
-  const filter = createFilter(options.include, options.exclude);
+  const idFilter = createFilter(include, exclude);
+  const packageNameFilter = createFilter(packageName, undefined, {
+    resolve: false,
+  });
 
   return {
     name: "reassign",
     transform(code: any, id: string) {
-      if (!filter(id)) return;
+      if (!idFilter(id)) return;
       const ast = this.parse(code);
       const magicString = new MagicString(code);
 
@@ -79,7 +82,7 @@ export function reassign(options: ReassignOptions): Plugin {
             imports.forEach((node) => {
               const { specifiers, source } = node;
 
-              if (packageName === source.value) {
+              if (packageNameFilter(source.value)) {
                 sourceMatch = true;
 
                 specifiers.forEach((specifier) => {
