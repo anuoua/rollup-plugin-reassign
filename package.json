@@ -2,19 +2,16 @@
   "name": "rollup-plugin-reassign",
   "version": "0.0.0",
   "description": "rollup plugin for re-assign variable",
-  "main": "./dist/bundle.cjs.js",
-  "module": "./dist/bundle.esm.js",
-  "types": "./dist/index.d.ts",
-  "typings": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "scripts": {
     "test": "jest",
     "dist": "rollup --config"
   },
   "exports": {
-    ".": {
-      "require": "./dist/bundle.cjs.js",
-      "import": "./dist/bundle.esm.js"
-    }
+    "require": "./dist/cjs/index.js",
+    "import": "./dist/esm/index.js"
   },
   "repository": {
     "type": "git",
