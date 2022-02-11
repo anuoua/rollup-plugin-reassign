@@ -5,7 +5,7 @@ specifiers:
   '@rollup/pluginutils': ^4.1.2
   '@types/estree': ^0.0.50
   '@types/jest': ^27.4.0
-  estree-walker: ^3.0.1
+  estree-walker: 2.0.2
   jest: ^27.4.7
   magic-string: ^0.25.7
   rollup: ^2.66.1
@@ -15,7 +15,7 @@ specifiers:
 
 dependencies:
   '@rollup/pluginutils': 4.1.2
-  estree-walker: 3.0.1
+  estree-walker: 2.0.2
   magic-string: 0.25.7
 
 devDependencies:
@@ -1156,10 +1156,6 @@ packages:
 
   /estree-walker/2.0.2:
     resolution: {integrity: sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==}
-    dev: false
-
-  /estree-walker/3.0.1:
-    resolution: {integrity: sha512-woY0RUD87WzMBUiZLx8NsYr23N5BKsOMZHhu2hoNRVh6NXGfoiT1KOL8G3UHlJAnEDGmfa5ubNA/AacfG+Kb0g==}
     dev: false
 
   /esutils/2.0.3:
