@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-reassign",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "rollup plugin for re-assign variable",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
