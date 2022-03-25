@@ -21,7 +21,11 @@ interface ReassignOptions {
   exclude?: FilterPattern; // Eclude files
   sourcemap?: boolean; // Sourcemap default: true
   targetFns: {
-    [index: string]: string[]; // Effective package and fns
+    // Specify package
+    [index: string]: {
+      // Specify reassign function name and insert position (Nature number). if position === -1, it will be inserted end of params.
+      [index: string]: number;
+    };
   };
 }
 
@@ -41,7 +45,12 @@ export default {
   plugins: [
     reassign({
       targetFns: {
-        "a-package": ["default", "fn1", "fn2"],
+        "a-package": {
+          default: 1,
+          fn1: 1,
+          fn2: 1,
+          fn3: -1,
+        },
       },
     }),
   ],
@@ -50,26 +59,30 @@ export default {
 // `default` is `export default` variable, see `fn0` below
 ```
 
-code
+Code
 
 ```typescript
-import fn0, { fn1, fn2 } from "a-package";
+import fn0, { fn1, fn2, fn3 } from "a-package";
 
 let [k, setK] = fn0("a");
 let { b } = fn1("a");
 let a = fn2("a");
+let c = fn2();
+let d = fn3();
 ```
 
-compile to
+Compile to
 
 ```typescript
-import fn0, { fn1, fn2 } from "a-package";
+import fn0, { fn1, fn2, fn3 } from "a-package";
 
 let [k, setK] = fn0("a", ([$0, $1]) => (k = $0; setK = $1));
 let { b } = fn1("a", ({ b: $0 }) => {
   b = $0;
 });
-let a = fn2("a", ($) => (a = $));
+let a = fn2("a", $ => a = $);
+let c = fn2(undefined, $ => c = $);
+let d = fn3($ => d = $)
 ```
 
 ## License
