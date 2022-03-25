@@ -32,11 +32,14 @@ export interface ReassignOptions {
   exclude?: FilterPattern;
   sourcemap?: boolean;
   targetFns: {
-    [index: string]: string[];
+    [index: string]: {
+      [index: string]: number;
+    };
   };
 }
 
-const SUFFIX = "$NO";
+const SUFFIX = "$$NO";
+const REASSIGN_FLAG = "$";
 
 export function reassign(options: ReassignOptions): Plugin {
   const { targetFns: targets, include, exclude, sourcemap = true } = options;
@@ -53,7 +56,7 @@ export function reassign(options: ReassignOptions): Plugin {
       let scope: AttachedScope | undefined = attachScopes(ast, "scope");
 
       let sourceMatch = false;
-      const importFns: string[] = [];
+      const importFns: { [index: string]: number } = {};
 
       walk(ast, {
         enter(node) {
@@ -89,18 +92,19 @@ export function reassign(options: ReassignOptions): Plugin {
 
                   if ("ImportSpecifier" === type) {
                     const { imported, local } = specifier as ImportSpecifier;
-                    targetFns.includes(imported.name) &&
-                      importFns.push(local.name);
+                    Object.keys(targetFns).includes(imported.name) &&
+                      (importFns[local.name] = targetFns[local.name]);
                   }
 
                   if ("ImportDefaultSpecifier" === type) {
                     const { local } = specifier;
-                    targetFns.includes("default") && importFns.push(local.name);
+                    Object.keys(targetFns).includes("default") &&
+                      (importFns[local.name] = targetFns["default"]);
                   }
 
                   if ("ImportNamespaceSpecifier" === type) {
                     const { local } = specifier;
-                    importFns.push(local.name);
+                    importFns[local.name] = targetFns[local.name];
                   }
                 });
               }
@@ -112,7 +116,7 @@ export function reassign(options: ReassignOptions): Plugin {
 
           if ("AssignmentExpression" === node.type) {
             const { left } = node as AssignmentExpression;
-            if (left.type === "Identifier" && importFns.includes(left.name)) {
+            if (left.type === "Identifier" && left.name in importFns) {
               scope!.declarations[left.name + SUFFIX] = true;
             }
           }
@@ -122,91 +126,95 @@ export function reassign(options: ReassignOptions): Plugin {
             if (
               init?.type === "CallExpression" &&
               init.callee.type === "Identifier" &&
-              importFns.includes(init.callee.name) &&
+              init.callee.name in importFns &&
               !scope?.contains(init.callee.name + SUFFIX)
             ) {
+              const args = init.arguments;
+
+              const start = args.length ? args[0].start : node.end - 1;
+              const end = args.length ? args.slice(-1)[0].end : node.end - 1;
+
+              const reassignFnIndex = importFns[init.callee.name];
+              const isAppendEnd = reassignFnIndex === -1;
+
+              const originParamsStr = args.length
+                ? magicString.slice(args[0].start, args.slice(-1)[0].end)
+                : "";
+
+              let assignFnStr = "";
+              let undefinedStr = "";
+
+              if (reassignFnIndex - args.length > 0)
+                undefinedStr = new Array(reassignFnIndex - args.length)
+                  .fill("undefined")
+                  .join(",");
+
+              let finallyParamsStr = "";
+
+              // Do nothing when reassignFnIndex place already exist argument
+              if (args[reassignFnIndex]) return;
+
               if (id.type === "Identifier") {
-                magicString.appendLeft(
-                  node.end - 1,
-                  `${init.arguments.length === 0 ? "" : ","}$=>${id.name}=$`
-                );
-              }
+                assignFnStr = `${REASSIGN_FLAG}=>${id.name}=${REASSIGN_FLAG}`;
 
-              const find = (
-                idNode: ObjectPattern | ArrayPattern
-              ): Identifier[] => {
-                return idNode.type === "ObjectPattern"
-                  ? (idNode as ObjectPattern).properties.reduce((pre, i) => {
-                      if (i.type === "Property") {
-                        const { value, key } = i;
-                        if (
-                          value.type === "Identifier" &&
-                          key.type === "Identifier"
-                        ) {
-                          if (
-                            (key.name === value.name &&
-                              i.shorthand === false) ||
-                            key.name !== value.name
-                          ) {
-                            value.isReplace = true;
-                          }
-                          return pre.concat(value);
-                        } else if (
-                          value.type === "ObjectPattern" ||
-                          value.type === "ArrayPattern"
-                        ) {
-                          return pre.concat(find(value));
-                        }
-                        // ...
-                      } else if (i.type === "RestElement") {
-                        if (i.argument.type === "Identifier") {
-                          i.argument.isReplace = true;
-                          return pre.concat(i.argument);
-                        }
-                      }
-
-                      return pre;
-                    }, [] as Identifier[])
-                  : (idNode as ArrayPattern).elements.reduce((pre, i) => {
-                      if (i === null) return pre;
-                      if (i.type === "Identifier") {
-                        i.isReplace = true;
-                        return pre.concat(i);
-                      } else if (
-                        i.type === "ArrayPattern" ||
-                        i.type === "ObjectPattern"
-                      ) {
-                        return pre.concat(find(i));
-                      }
-                      // ...
-                      return [];
-                    }, [] as Identifier[]);
-              };
-
-              if (id.type === "ObjectPattern" || id.type === "ArrayPattern") {
+                if (isAppendEnd) {
+                  finallyParamsStr = `${!args.length ? "" : ","}${assignFnStr}`;
+                } else {
+                  finallyParamsStr = [
+                    originParamsStr,
+                    undefinedStr,
+                    assignFnStr,
+                  ]
+                    .filter((i) => i)
+                    .join(",");
+                }
+              } else if (
+                id.type === "ObjectPattern" ||
+                id.type === "ArrayPattern"
+              ) {
                 const result = find(id);
                 const cloneMagicString = magicString.clone();
 
                 result.forEach((i, index) => {
                   i.isReplace
-                    ? cloneMagicString.overwrite(i.start, i.end, `$${index}`)
-                    : cloneMagicString.appendRight(i.end, `:$${index}`);
+                    ? cloneMagicString.overwrite(
+                        i.start,
+                        i.end,
+                        `${REASSIGN_FLAG}${index}`
+                      )
+                    : cloneMagicString.appendRight(
+                        i.end,
+                        `:${REASSIGN_FLAG}${index}`
+                      );
                 });
 
                 const assigns = result
-                  .map((i, index) => `${i.name}=$${index}`)
+                  .map((i, index) => `${i.name}=${REASSIGN_FLAG}${index}`)
                   .join(";");
 
-                magicString.appendRight(
-                  node.end - 1,
-                  `${
-                    init.arguments.length === 0 ? "" : ","
-                  }(${cloneMagicString.slice(
-                    id.start,
-                    id.end
-                  )})=>{${assigns}}`.replace(/[\s]*/g, "")
-                );
+                let assignFnStr = `(${cloneMagicString.slice(
+                  id.start,
+                  id.end
+                )})=>{${assigns}}`.replace(/[\s]*/g, "");
+
+                if (isAppendEnd) {
+                  finallyParamsStr = `${args.length ? "," : ""}${assignFnStr}`;
+                } else {
+                  finallyParamsStr = [
+                    originParamsStr,
+                    undefinedStr,
+                    assignFnStr,
+                  ]
+                    .filter((i) => i)
+                    .join(",");
+                }
               }
+
+              isAppendEnd
+                ? magicString.appendRight(end, finallyParamsStr)
+                : start === end
+                ? magicString.appendRight(end, finallyParamsStr)
+                : magicString.overwrite(start, end, finallyParamsStr);
             }
           }
         },
@@ -230,3 +238,45 @@ export function reassign(options: ReassignOptions): Plugin {
     },
   };
 }
+
+const find = (idNode: ObjectPattern | ArrayPattern): Identifier[] => {
+  return idNode.type === "ObjectPattern"
+    ? (idNode as ObjectPattern).properties.reduce((pre, i) => {
+        if (i.type === "Property") {
+          const { value, key } = i;
+          if (value.type === "Identifier" && key.type === "Identifier") {
+            if (
+              (key.name === value.name && i.shorthand === false) ||
+              key.name !== value.name
+            ) {
+              value.isReplace = true;
+            }
+            return pre.concat(value);
+          } else if (
+            value.type === "ObjectPattern" ||
+            value.type === "ArrayPattern"
+          ) {
+            return pre.concat(find(value));
+          }
+          // ...
+        } else if (i.type === "RestElement") {
+          if (i.argument.type === "Identifier") {
+            i.argument.isReplace = true;
+            return pre.concat(i.argument);
+          }
+        }
+
+        return pre;
+      }, [] as Identifier[])
+    : (idNode as ArrayPattern).elements.reduce((pre, i) => {
+        if (i === null) return pre;
+        if (i.type === "Identifier") {
+          i.isReplace = true;
+          return pre.concat(i);
+        } else if (i.type === "ArrayPattern" || i.type === "ObjectPattern") {
+          return pre.concat(find(i));
+        }
+        // ...
+        return [];
+      }, [] as Identifier[]);
+};

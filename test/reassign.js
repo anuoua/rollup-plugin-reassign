@@ -1,4 +1,5 @@
 import at, { bt } from "test";
+import ct from "test2";
 
 export function main() {
   let {
@@ -10,6 +11,8 @@ export function main() {
   } = at("hello");
   let [{ f: g }] = bt("hello");
   let a = bt("hello");
+  let h = at();
+  let p = ct("hello");
 
   return {
     a,
@@ -17,5 +20,7 @@ export function main() {
     d,
     e,
     g,
+    h,
+    p,
   };
 }
