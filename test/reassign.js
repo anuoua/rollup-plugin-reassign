@@ -7,6 +7,8 @@ export function main() {
       b: { c },
       ...d
     },
+    f: { j = 1 } = {},
+    k: [{ u }] = [],
     ...e
   } = at("hello");
   let [{ f: g }] = bt("hello");
