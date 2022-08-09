@@ -12,18 +12,28 @@ import type {
   ImportSpecifier,
   AssignmentExpression,
   VariableDeclarator,
-  ObjectPattern,
   Identifier,
-  ArrayPattern,
   Program,
   BaseNode,
   AssignmentPattern,
 } from "estree";
+import {
+  isArrayPattern,
+  isAssignmentPattern,
+  isIdentifier,
+  isObjectPattern,
+  isProperty,
+  isRestElement,
+} from "./utils";
+
+export enum TYPE {
+  REPLACE,
+  ALIA_ADD,
+}
 
 declare module "estree" {
   interface BaseNode {
-    opType?: OP_TYPE;
-    needReassign?: boolean;
+    opType?: TYPE;
     scope?: AttachedScope;
     start: number;
     end: number;
@@ -44,7 +54,7 @@ export interface ReassignOptions {
 export enum OP_TYPE {
   APPEND_REASSIGN_VAR,
   REPLACE_WITH_REASSIGN_VAR,
-  DECONSTRUCT_TRIM_DEFAULT_VAL,
+  DECONSTRUCT_WITH_DEFAULT_VAL,
 }
 
 const is_APPEND_REASSIGN_VAR = (node: any): node is Identifier => {
@@ -58,7 +68,7 @@ const is_REPLACE_WITH_REASSIGN_VAR = (node: any): node is Identifier => {
 const is_DECONSTRUCT_TRIM_DEFAULT_VAL = (
   node: any
 ): node is AssignmentPattern => {
-  return node.opType === OP_TYPE.DECONSTRUCT_TRIM_DEFAULT_VAL;
+  return node.opType === OP_TYPE.DECONSTRUCT_WITH_DEFAULT_VAL;
 };
 
 const SUFFIX = "$$NO";
@@ -146,6 +156,7 @@ export function reassign(options: ReassignOptions): Plugin {
 
           if ("VariableDeclarator" === node.type) {
             const { init, id } = node as VariableDeclarator;
+
             if (
               init?.type === "CallExpression" &&
               init.callee.type === "Identifier" &&
@@ -200,53 +211,24 @@ export function reassign(options: ReassignOptions): Plugin {
 
                 result.forEach((i, index) => {
                   switch (i.opType) {
-                    case OP_TYPE.REPLACE_WITH_REASSIGN_VAR:
+                    case TYPE.REPLACE:
                       cloneMagicString.overwrite(
                         i.start,
                         i.end,
                         `${REASSIGN_FLAG}${index}`
                       );
                       break;
-                    case OP_TYPE.APPEND_REASSIGN_VAR:
+                    case TYPE.ALIA_ADD:
                       cloneMagicString.appendRight(
                         i.end,
                         `:${REASSIGN_FLAG}${index}`
                       );
                       break;
-                    case OP_TYPE.DECONSTRUCT_TRIM_DEFAULT_VAL:
-                      if (is_DECONSTRUCT_TRIM_DEFAULT_VAL(i)) {
-                        if (i.left.type === "Identifier") {
-                          cloneMagicString.overwrite(
-                            i.left.end,
-                            i.right.end,
-                            `:${REASSIGN_FLAG}${index}`
-                          );
-                        }
-
-                        if (
-                          i.left.type === "ArrayPattern" ||
-                          i.left.type === "ObjectPattern"
-                        ) {
-                          cloneMagicString.remove(i.left.end, i.right.end);
-                        }
-                      }
-                      break;
                   }
                 });
 
                 const assigns = result
-                  .map((i, index) => {
-                    if (!i.needReassign) return "";
-                    if (is_APPEND_REASSIGN_VAR(i))
-                      return `${i.name}=${REASSIGN_FLAG}${index}`;
-                    if (is_REPLACE_WITH_REASSIGN_VAR(i))
-                      return `${i.name}=${REASSIGN_FLAG}${index}`;
-                    if (is_DECONSTRUCT_TRIM_DEFAULT_VAL(i)) {
-                      if (i.left.type === "Identifier") {
-                        return `${i.left.name}=${REASSIGN_FLAG}${index}`;
-                      }
-                    }
-                  })
+                  .map((i, index) => `${i.name}=${REASSIGN_FLAG}${index}`)
                   .join(";");
 
                 let assignFnStr = `(${cloneMagicString.slice(
@@ -296,63 +278,70 @@ export function reassign(options: ReassignOptions): Plugin {
   };
 }
 
-const find = (idNode: ObjectPattern | ArrayPattern): BaseNode[] => {
-  return idNode.type === "ObjectPattern"
-    ? (idNode as ObjectPattern).properties.reduce((pre, i) => {
-        if (i.type === "Property") {
-          const { value, key } = i;
-          if (value.type === "Identifier" && key.type === "Identifier") {
-            if (
-              (key.name === value.name && i.shorthand === false) ||
-              key.name !== value.name
-            ) {
-              value.opType = OP_TYPE.REPLACE_WITH_REASSIGN_VAR;
-            } else {
-              value.opType = OP_TYPE.APPEND_REASSIGN_VAR;
-            }
+const find = (idNode: BaseNode): Identifier[] => {
+  const arr = [] as Identifier[];
 
-            value.needReassign = true;
+  if (isObjectPattern(idNode)) {
+    idNode.properties.forEach((property) => arr.push(...find(property)));
+  }
 
-            return pre.concat(value);
-          } else if (value.type === "AssignmentPattern") {
-            value.opType = OP_TYPE.DECONSTRUCT_TRIM_DEFAULT_VAL;
-            if (value.left.type === "Identifier") {
-              value.needReassign = true;
-              return pre.concat(value);
-            }
-            if (
-              value.left.type === "ObjectPattern" ||
-              value.left.type === "ArrayPattern"
-            ) {
-              return pre.concat([value, ...find(value.left)]);
-            }
-          } else if (
-            value.type === "ObjectPattern" ||
-            value.type === "ArrayPattern"
-          ) {
-            return pre.concat(find(value));
-          }
-          // ...
-        } else if (i.type === "RestElement") {
-          if (i.argument.type === "Identifier") {
-            i.argument.opType = OP_TYPE.REPLACE_WITH_REASSIGN_VAR;
-            i.argument.needReassign = true;
-            return pre.concat(i.argument);
+  if (isArrayPattern(idNode)) {
+    idNode.elements.forEach((element) => {
+      if (!element) return;
+      if (isIdentifier(element)) {
+        element.opType = TYPE.REPLACE;
+        arr.push(element);
+      } else {
+        arr.push(...find(element));
+      }
+    });
+  }
+
+  if (isAssignmentPattern(idNode)) {
+    arr.push(...find(idNode.left));
+  }
+
+  if (isRestElement(idNode)) {
+    if (isIdentifier(idNode.argument)) {
+      idNode.argument.opType = TYPE.REPLACE;
+      arr.push(idNode.argument);
+    } else {
+      arr.push(...find(idNode.argument));
+    }
+  }
+
+  if (isProperty(idNode)) {
+    if (isIdentifier(idNode.key)) {
+      if (isIdentifier(idNode.value)) {
+        idNode.value.opType =
+          idNode.key.name === idNode.value.name ? TYPE.ALIA_ADD : TYPE.REPLACE;
+        arr.push(idNode.value);
+      } else if (isAssignmentPattern(idNode.value)) {
+        if (isIdentifier(idNode.value.left)) {
+          if (idNode.key.name === idNode.value.left.name) {
+            idNode.key.opType = TYPE.ALIA_ADD;
+            arr.push(idNode.key);
+          } else {
+            idNode.value.left.opType = TYPE.REPLACE;
+            arr.push(idNode.value.left);
           }
         }
-
-        return pre;
-      }, [] as BaseNode[])
-    : (idNode as ArrayPattern).elements.reduce((pre, i) => {
-        if (i === null) return pre;
-        if (i.type === "Identifier") {
-          i.opType = OP_TYPE.REPLACE_WITH_REASSIGN_VAR;
-          i.needReassign = true;
-          return pre.concat(i);
-        } else if (i.type === "ArrayPattern" || i.type === "ObjectPattern") {
-          return pre.concat(find(i));
+      }
+      arr.push(...find(idNode.value));
+    } else {
+      if (isIdentifier(idNode.value)) {
+        idNode.value.opType = TYPE.REPLACE;
+        arr.push(idNode.value);
+      }
+      if (isAssignmentPattern(idNode.value)) {
+        if (isIdentifier(idNode.value.left)) {
+          idNode.value.left.opType = TYPE.REPLACE;
+          arr.push(idNode.value.left);
         }
-        // ...
-        return [];
-      }, [] as BaseNode[]);
+      }
+      arr.push(...find(idNode.value));
+    }
+  }
+
+  return arr;
 };

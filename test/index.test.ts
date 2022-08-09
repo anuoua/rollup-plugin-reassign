@@ -7,13 +7,13 @@ import ct from 'test2';
 function main() {
   let {
     a: {
-      b: { c },
+      b: { c = 1 },
       ...d
     },
-    f: { j = 1 } = {},
+    f: { j = 1, ["k"]: ki } = {},
     k: [{ u }] = [],
     ...e
-  } = at("hello",({a:{b:{c:$0},...$1},f:{j:$3},k:[{u:$5}],...$6})=>{c=$0;d=$1;j=$3;u=$5;e=$6;});
+  } = at("hello",({a:{b:{c:$0=1},...$1},f:{j:$2=1,["k"]:$3}={},k:[{u:$4}]=[],...$5})=>{c=$0;d=$1;j=$2;ki=$3;u=$4;e=$5;});
   let [{ f: g }] = bt("hello",([{f:$0}])=>{g=$0;});
   let a = bt("hello",$=>a=$);
   let h = at(undefined,$=>h=$);
@@ -23,6 +23,8 @@ function main() {
     a,
     c,
     d,
+    j,
+    ki,
     e,
     g,
     h,

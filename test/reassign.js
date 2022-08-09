@@ -4,10 +4,10 @@ import ct from "test2";
 export function main() {
   let {
     a: {
-      b: { c },
+      b: { c = 1 },
       ...d
     },
-    f: { j = 1 } = {},
+    f: { j = 1, ["k"]: ki } = {},
     k: [{ u }] = [],
     ...e
   } = at("hello");
@@ -20,6 +20,8 @@ export function main() {
     a,
     c,
     d,
+    j,
+    ki,
     e,
     g,
     h,
