@@ -4,18 +4,12 @@ import { defineConfig } from "rollup";
 const configGen = (format) =>
   defineConfig({
     input: "src/index.ts",
-    plugins: [
-      typescript({
-        include: "src/**/*.ts",
-        module: "esnext",
-        declarationDir: `dist/${format}`,
-      }),
-    ],
+    plugins: [typescript()],
     external: ["@rollup/pluginutils", "estree-walker", "magic-string"],
     output: {
       sourcemap: true,
-      dir: `dist/${format}`,
-      entryFileNames: `index.js`,
+      dir: "dist",
+      entryFileNames: `index.${format === "esm" ? "mjs" : "js"}`,
       format,
     },
   });
