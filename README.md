@@ -1,6 +1,8 @@
 # Rollup reassign plugin [![Node.js Package](https://github.com/anuoua/rollup-plugin-reassign/actions/workflows/npm-publish-github-packages.yml/badge.svg)](https://github.com/anuoua/rollup-plugin-reassign/actions/workflows/npm-publish-github-packages.yml)
 
-A rollup plugin for self reassign variable.
+> No longer maintained
+> 
+> Move to [anuoua/callback-reassign](https://www.github.com/anuoua/callback-reassign)
 
 ## Install
 
